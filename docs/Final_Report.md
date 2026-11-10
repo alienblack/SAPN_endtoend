@@ -402,7 +402,7 @@ A numeric field breaks if pooled skill is below 0.10 or fewer than 50% of hidden
 
 At the anchor, Gaussian EM has the fewest breaks (3 of 13 versus 5 for MissForest), while MissForest leads on mean skill (0.656 versus 0.641). Humidity, salt and overgrowth fail the ±15% tolerance criterion in every tested comparison. At the anchor, MissForest beats the median on all three (skill 0.58, 0.35 and 0.68), but fewer than half the fills are close enough.
 
-Under grouped gaps, MissForest still flags five fields, but y, altitude and salt fall below the floor. Matching the MLP’s training masks gives the highest grouped mean skill (0.453) and removes its one below-floor field. The same seven fields still break.
+Under grouped gaps, MissForest still flags five fields, but y, altitude and salt fall below the floor. Matching the MLP’s training masks gives the highest grouped mean skill (0.453) and removes its one below-floor field. The same seven fields still break. Gaussian EM breaks five and stays at or above the floor on all 13.
 
 k-NN’s x rises from 46.9% to 63.7% within tolerance, crossing the threshold. The x mask is identical and other fields have different visibility. MNAR and structural errors flag the same fields as the anchor. Sections 7 and 8 show the age-band date bias and affected-row gas errors that pooling hides.
 
