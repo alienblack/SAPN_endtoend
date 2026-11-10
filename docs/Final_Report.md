@@ -354,6 +354,67 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 
 **Figure 8. Sensitivity to which inputs are noisy.** Each family is compared with the clean anchor on matched gaps. Warm cells show increases in error as a share of clean floor error. This design combines changes to recorded predictors and training values.
 
+<div class="page-break"></div>
+
+## 8A. Where each method breaks
+
+### Limit map across five transformer conditions
+
+A numeric field breaks if pooled skill is below 0.10 or fewer than 50% of its hidden fills are within the loose tolerance. The model-only comparison uses decay-corrected gas features and excludes the placebo and Model ID. Within each field, pooled skill is 1 minus total absolute error divided by the scenario-specific floor’s total absolute error. The tolerance share is the proportion of hidden fills within the loose limit. Each condition pools nine generator/split pairs except 70% MCAR, which pools three.
+
+**Fields that break out of 13**
+
+| Method | 30% MCAR | 70% MCAR | 30% MNAR | Grouped | Structural errors |
+| --- | --- | --- | --- | --- | --- |
+| Median / mode | 13 | 13 | 13 | 13 | 13 |
+| Chained ridge | 8 | 13 | 8 | 8 | 8 |
+| k-NN | 8 | 8 | 8 | 7 | 8 |
+| MissForest | 5 | 8 | 5 | 5 | 5 |
+| Gaussian EM | 3 | 8 | 3 | 5 | 3 |
+| Masked MLP | 7 | 8 | 7 | 7 | 7 |
+
+![Heatmap of field break counts by model and condition](figures/model_break_limit_map.png)
+
+**Figure 8a. Field breaks by method and condition.** At 70% MCAR every alternative to the floor flags at least eight fields. The floor has zero skill by definition.
+
+**Which fields break**
+
+| Method | 30% MCAR | 70% MCAR | 30% MNAR | Grouped | Structural errors |
+| --- | --- | --- | --- | --- | --- |
+| Median / mode | All 13 | All 13 | All 13 | All 13 | All 13 |
+| Chained ridge | x, y, Day, Alt., Leakage, Env. | All 13 | x, y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. |
+| k-NN | x, y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. | y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. |
+| MissForest | y, Alt., Env. | x, y, Day, Alt., Leakage, Env. | y, Alt., Env. | y, Alt., Env. | y, Alt., Env. |
+| Gaussian EM | Env. | x, y, Day, Alt., Leakage, Env. | Env. | y, Alt., Env. | Env. |
+| Masked MLP | y, Day, Alt., Leakage, Env. | x, y, Day, Alt., Leakage, Env. | y, Day, Alt., Leakage, Env. | y, Day, Alt., Leakage, Env. | y, Day, Alt., Leakage, Env. |
+
+*Day = installation day. Alt. = altitude. Env. = humidity, salt and overgrowth. All 13 also includes life and the four gas fields.*
+
+*Saved source — final/tables/cells.csv and anchor-stress/tables/cells.csv, group all, model only, domain features on. Grouped uses the original MLP trained with independent remasking. The structural-error scenario is stored as `mcar30-n05-outliers`.*
+
+<div class="page-break"></div>
+
+### What the counts miss
+
+MissForest flags the same five fields at the anchor and under grouped gaps. All five fail only tolerance at the anchor and fail both tests under grouped gaps. For example, pooled altitude skill falls from 0.61 to −0.67. The structural-error column has the same counts and fields as the anchor for every method. Section 8 shows the gas errors hidden by pooling rows with and without a wrong visible clue. Section 7 shows the date bias by age band under MNAR.
+
+### Why the methods fail differently
+
+Skill values below use the report’s pair averages. The proposed mechanisms reflect how each method was implemented.
+
+| Method | Works best when | Where it breaks | Why this method is vulnerable |
+| --- | --- | --- | --- |
+| Median / mode | Predictors are weak and a central guess is adequate. | 13 of 13 break in every condition on the relative-skill rule. | A fixed training median or mode ignores clues that distinguish one asset from another. |
+| Chained ridge | Gaps are sparse and engineered predictors have approximately linear effects. Mean skill is 0.689 at 10% gaps and zero added noise. | Mean skill drops to 0.117 at 50% gaps, −0.339 at 70%, and 0.249 with grouped gaps. Anchor overgrowth and life skill are 0.57 and 0.38. | The numeric conditionals are linear in their inputs. Each fill can enter later predictions, so errors can propagate when observations are scarce. The saved results do not isolate that effect. |
+| k-NN | Similarity across available features identifies good donors. Anchor Model ID skill is 0.93. | Anchor skill is 0.25 for y, 0.11 for salt and 0.38 for overgrowth. At 30% overhead corruption, location-group and material skills are −0.40 and −0.14. | The distance averages discrepancies across overlapping inputs. A key helper can be absent or diluted by unrelated inputs. |
+| Predictive MissForest | Scattered gaps leave strong helpers for nonlinear effects. It leads the anchor at 0.656, with gas skills of 0.81–0.84 and life skill of 0.67. | Grouped mean skill is 0.264, with y at −0.58 and altitude at −0.67. At 70% gaps it scores 0.302, behind EM. Rules first lowers anchor altitude skill from 0.61 to 0.47. Raw supported-pattern coverage averages 75.9%, with a 26.4% minimum. In rules first, grouped Model ID has 0% eligible and grouped Gas A reaches 93.98% precision. Model-based x reaches 74.2% at the anchor. | When a split needs a missing helper, the chain uses filled inputs. Tree spread measures disagreement and can understate error. Averaging can damp class probabilities, which peaked at 90.0% after calibration on the representative grouped split. The cause of the rules-first altitude loss remains unresolved. |
+| Gaussian EM | Location and date suit the Gaussian components. It scores 0.345 at 70% gaps and 0.435 with grouped gaps. Raw supported-pattern coverage averages 95.9% at the anchor. | Anchor life skill is 0.50 and Gas C skill is 0.64, against 0.67 and 0.81 for MissForest. Decay correction reduces mean skill from 0.671 to 0.641. At the anchor, 0% of installation-day gaps qualify for auto-fill in either arm. | Within a component, the conditional mean is linear in observed inputs. A shared-covariance mixture can only approximate products and thresholds. Wide intervals explain the date gate result. The reason for the feature-ablation loss is unresolved. |
+| Masked MLP | Training gaps resemble test gaps. Matching the grouped masks raises grouped test skill from 0.375 to a leading 0.453. | Mean skill is 0.563 at the scattered anchor and 0.288 at 70% gaps. For life, the lowest rules-first precision was 66.7% in a small eligible group. | Remasking sets which combinations the network learns to reconstruct. The grouped comparison tests this mismatch directly. With few eligible fills, a small number of errors can move observed precision sharply. |
+
+*Saved source — final/tables/macro_run_scores.csv, cells.csv, patterns.csv and life_tolerance_sensitivity.csv; failure-audit/tables/mlp_remask_comparison.csv and routing.csv; final-review/non_rule_errors.csv and rule_vs_model_eligibility.csv. Sections 9 and 10 give the rules-first gate and altitude diagnostics.*
+
+<div class="page-break"></div>
+
 ## 9. Confidence, calibration and auto-fill
 
 **Worst supported anchor pattern for MissForest**
