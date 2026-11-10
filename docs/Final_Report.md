@@ -68,11 +68,11 @@ Eighteen named scenarios were in the principal run and two were added in the gro
 | overhead20-n30 | 20% | 30% | Supplied mask and corruption | 3 |
 | overhead20-n50 | 20% | 50% | Supplied mask and corruption | 3 |
 | group30-n05 | 30% | ±5% | Whole related blocks | 9 |
-| mcar30-n05-outliers | 30% | ±5% + date/code errors | Anchor mask; recorded errors | 9 |
+| Structural errors | 30% | ±5% + date/code errors | Anchor mask; recorded errors | 9 |
 
 **Why.** Shared draws keep the MCAR masks nested across missingness rates and keep the mask fixed across noise levels. MAR keeps x visible and changes the date gap probability by x. MNAR instead depends on the unseen date. Overhead noise denotes the supplied corruption frequency rather than transformer noise amplitude.
 
-*Saved source — final/tables/macro_run_scores.csv; final/contract.json; anchor-stress/contract.json and run_status.json.*
+*Saved source — final/tables/macro_run_scores.csv; final/contract.json; anchor-stress/contract.json and run_status.json. The structural-error scenario is stored as `mcar30-n05-outliers`.*
 
 ### Preprocessing and engineered inputs
 
@@ -137,6 +137,8 @@ Numeric skill is 1 − MAE / median-floor MAE. Categorical skill uses misclassif
 
 Numeric uncertainty starts with a model scale and uses finite-sample split-conformal calibration on independent, re-masked calibration blocks. Use an exact mask with at least 50 calibration examples, then key visibility plus gap burden, key visibility alone and finally the pooled field. Categorical probabilities use temperature scaling. Auto-fill eligibility requires the whole numeric band to fit the tight limit, an applicable exact rule or a calibrated class probability of at least 95%. The loose numeric limit or a categorical probability of at least 65% routes to review. Other cases abstain. A field deployment additionally needs independent pattern-level coverage or precision evidence. The target numeric coverage is 90%.
 
+<div class="page-break"></div>
+
 ## 6. Anchor results
 
 **Thirty percent MCAR with ±5% noise**
@@ -150,7 +152,9 @@ Numeric uncertainty starts with a model scale and uses finite-sample split-confo
 | Gaussian EM | 0.641 | 0.648 | 0.893 | 91.8% | 19.5% | 99.0% |
 | Masked MLP | 0.563 | 0.595 | 0.957 | 91.8% | 21.1% | 98.1% |
 
-**Why.** MissForest can exploit interactions among position, gases and model ID when clues are available. The model-only difference, EM minus MissForest, was -0.015 with a descriptive 95% interval from -0.020 to -0.006. ¹ Rules-first; numeric coverage and eligibility are distinct.
+**Why.** MissForest can exploit interactions among position, gases and model ID when clues are available. The model-only difference, EM minus MissForest, was -0.015 with a descriptive 95% interval from -0.020 to -0.006.
+
+¹ Rules first. Eligibility and precision pool hidden cells across runs for numeric fields excluding the placebo. The earlier anchor summary pooled all hidden fields, including Model ID and the placebo. The field verdicts in Section 15 pool each field separately. Numeric coverage here is averaged over the same numeric fields used for eligibility.
 
 *Saved source — final/tables/macro_run_scores.csv, cells.csv, paired_intervals.csv.*
 
@@ -229,6 +233,8 @@ Numeric uncertainty starts with a model scale and uses finite-sample split-confo
 
 **Why.** As independent masking grows, fewer useful inputs survive. The ±20% stress adds measurement error on the seven measured fields. MAR keeps x visible, changing which clues are available. Match the generator and split before interpreting the differences in the optional scenarios.
 
+Chained ridge reaches −0.339 skill at 70% missingness, below the median floor. Its linear conditionals reuse earlier guesses as predictors. With few observed inputs, errors can propagate through the chain and produce large deviations. The saved runs show the collapse, but do not isolate the contribution of that feedback.
+
 *Saved source — final/tables/macro_run_scores.csv.*
 
 ![The missing-rate and noise grid](figures/02_mcar_grid.png)
@@ -252,6 +258,8 @@ Numeric uncertainty starts with a model scale and uses finite-sample split-confo
 
 **Why.** The MAR perturbation changes which rows are hidden and keeps x available; the 20% perturbation preserves the MCAR mask and changes only jitter amplitude. These are different mechanisms. The matching here removes variation from using a different generator.
 
+At the matched anchor, MissForest leads on mean floor-relative skill (0.664 versus 0.645), while Gaussian EM has a larger mean share within loose field tolerance (74.5% versus 68.5%). For SAPN, the preferred method depends on whether the goal is to reduce relative error overall or to bring more predictions within the field limits.
+
 *Saved source — final/tables/macro_run_scores.csv, seed 219, model only, domain features on.*
 
 **MissForest installation-day audit, MCAR / MNAR**
@@ -274,7 +282,7 @@ Numeric uncertainty starts with a model scale and uses finite-sample split-confo
 
 ## 8. Grouped gaps and structural errors
 
-The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides the location block, gas block, environmental block, or installation-day/model-ID block together. Life, leakage and placebo keep their own draws. The structural test preserves the independent anchor mask and adds ±60-day shifts to about 5% of dates and valid code swaps to about 2% of model IDs. Both tests preserve recorded values.
+The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides the location block, gas block, environmental block, or installation-day/model-ID block together. Life, leakage and placebo keep their own draws. This simulates structured missingness, where fields are absent together and the overall missing rate can hide the loss of linked inputs (Mitra et al., 2023). The structural test preserves the independent anchor mask and adds ±60-day shifts to about 5% of dates and valid code swaps to about 2% of model IDs. Both tests preserve recorded values.
 
 **Mean numeric skill, model only**
 
@@ -364,7 +372,7 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 
 **Figure 9. Coverage by missing pattern.** A reasonable overall coverage value can coexist with weak groups. Read the pattern minimum alongside raw, pooled and pattern-aware coverage.
 
-**Model ID probability calibration at the anchor**
+**Model ID probability calibration at the anchor, model only**
 
 | Method | Raw log loss | Scaled log loss | Raw ECE | Scaled ECE |
 | --- | --- | --- | --- | --- |
@@ -372,13 +380,13 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 | Gaussian EM | 0.1221 | 0.1224 | 0.0137 | 0.0139 |
 | Masked MLP | 0.1058 | 0.1040 | 0.0195 | 0.0161 |
 
-**Why.** Temperature is fitted against log loss. Expected calibration error uses bins and can move differently. The result should be read together with class error, the size of the eligible group and observed precision.
+**Why.** Temperature scaling fits a single parameter by minimising log loss (Guo et al., 2017). Expected calibration error (ECE) is binned and can move differently. MissForest’s ECE fell from 0.0303 to 0.0281 in the model-only arm, but rose from 0.0269 to 0.0312 in the rules-first arm. Log loss fell in both arms.
 
-*Saved source — final/tables/cells.csv, model only, Model ID.*
+*Saved source — final/tables/cells.csv, Model ID. The table uses model-only rows; the ECE comparison uses both arms.*
 
-![Temperature scaling and probability error](figures/14_category_calibration.png)
+![Temperature scaling and probability error, rules first](figures/14_category_calibration.png)
 
-**Figure 10. Temperature scaling and probability error.** Log loss and binned expected calibration error measure different effects of rescaling class probabilities.
+**Figure 10. Temperature scaling and probability error, rules first.** This panel uses the rules-first arm. The preceding table uses the model-only arm.
 
 **Grouped gaps and the confidence gate, rules first**
 
@@ -404,7 +412,11 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 
 ![Eligibility versus observed precision](figures/03_safe_fill_map.png)
 
-**Figure 11. Eligibility versus observed precision.** Read the eligible share and precision together. In the primary methods, every eligible y and altitude fill came from the exact rule; all eligible x fills for Gaussian EM and MLP were also exact. MissForest additionally proposed model-based x fills.
+**Figure 11. Eligibility versus observed precision.** Read the eligible share and precision together. In the primary methods, every eligible y and altitude fill came from the exact rule. All eligible x fills for Gaussian EM and the MLP were also exact.
+
+**Model-based x fills breach the precision target.** In the rules-first MissForest arm, only 112 of 151 eligible model-based x fills were correct (74.2%), below the 95% target. The 2,584 exact-rule fills account for most of the eligible set and lift combined precision to 98.6%. Keep model-based x fills in review until independent pattern-level validation meets the target.
+
+*Saved source — final-review/rule_vs_model_eligibility.csv; final/tables/attribute_guidance.csv.*
 
 ![Top-class probabilities on the representative grouped split](figures/grouped_model_id_probabilities.png)
 
@@ -423,7 +435,7 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 | Gaussian EM | 0.165 | 0.92 | 0.011 | 0.013 |
 | Masked MLP | 0.206 | 0.89 | 0.014 | 0.015 |
 
-**Why.** The Wasserstein values use one point per gap. Conditional point fills can narrow distributions and lose tail cases. The spread ratio and record-level association check show different effects.
+**Why.** The Wasserstein values use one point per gap. Conditional point fills can narrow distributions and lose tail cases, consistent with van Buuren’s discussion of single deterministic imputation (2018, Section 1.3). The spread ratio and record-level association check show different effects.
 
 *Saved source — final/tables/distribution.csv and tables.csv.*
 
@@ -440,7 +452,7 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 | Clean train / filled test | 61.2 | 0.933 | 86.9% |
 | Filled train / filled test | 63.6 | 0.933 | 86.7% |
 
-**Why.** Filling errors can carry into life prediction even when most fields appear recoverable. The comparison keeps the training-label and model specification fixed and varies the feature inputs.
+**Why.** Most of the damage appears when the downstream model predicts on filled inputs. Against the clean MAE of 19.5, filling training inputs alone raises it to 25.0, while filling test inputs alone raises it to 61.2. The training labels and model specification are fixed. For this benchmark, prioritise validation of predictions made on filled records.
 
 *Saved source — final/tables/downstream.csv, rules first, transformer anchor.*
 
@@ -478,7 +490,7 @@ The grouped test holds the nominal 30% gap rate and ±5% jitter fixed. It hides 
 
 *Saved source — final/tables/consistency.csv.*
 
-On rows with all terms observed at the noisy anchor, loose-tolerance agreement averaged 100.0% for altitude, 100.0% for total gas, 90.6% for overgrowth. This observed-only check separates measurement inconsistency from imputation effects.
+On rows with all terms observed at the noisy anchor, loose-tolerance agreement averaged 100.0% for altitude, 100.0% for total gas and 90.6% for overgrowth. That 90.6% is the observed-data reference for overgrowth. A gap-filling workflow that preserves observations cannot repair those existing inconsistencies. Agreement on the separate subset of filled rows can be higher or lower.
 
 ![Formula consistency at zero and nonzero noise](figures/13_consistency.png)
 
@@ -591,9 +603,28 @@ The transfer withholds entire feeders and excludes feeder and segment IDs as pre
 
 *Saved source — final/tables/macro_run_scores.csv.*
 
-The filled share aged 50 or older moved by +0.89 percentage points for MissForest at 30% supplied noise. The early synthetic overhead pilot used feeder ID as a predictor, so its results answer a different question. The saved Subteam C pilot is contextual evidence and no live SAPN register result is claimed here.
+The filled share aged 50 or older moved by +0.89 percentage points for MissForest at 30% supplied noise.
 
-**Earlier synthetic pilot, clean-noise installation year**
+### Subteam A Phase 1 pilot and age-distribution follow-up
+
+On one clean synthetic overhead population, Phase 1 hid 30% of material and installation-year values independently. The table averages five split/mask seeds. The follow-up retained the same point fills and estimated the share aged 50 or older by adding the probabilities for hidden years to the count from observed years.
+
+**Subteam A Phase 1 results, clean predictors**
+
+| Method | Material log loss | Installation-year MAE | Age 50+ share error, point fills | Age 50+ share error, probabilities |
+| --- | --- | --- | --- | --- |
+| Global floor | 0.750 | 10.84 years | +12.56 pp | +0.34 pp |
+| Conditional baseline | 0.697 | 10.37 years | +9.00 pp | +0.27 pp |
+
+**Why.** The conditional baseline improves both cell-level metrics, yet its single year fills overstate the share aged 50 or older by 9.00 percentage points. Using year probabilities brings that error down to +0.27 points without changing individual fills. This clean MCAR comparison supports using distributions for population summaries, rather than claiming that conditioning alone caused the gain.
+
+*Saved source — Subteam A pilot, `v3_phase1_age50_label_20261024/cell_metrics.csv` and `population_metrics.csv`. Expected shares use the clean rows in `v3_age_distribution_checked_paired_20261025/population_age_metrics.csv`.*
+
+### Context from Subteam C’s overhead study
+
+Subteam C used feeder ID as a predictor, so its saved study answers a different question from the feeder-held-out transfer above.
+
+**Subteam C context, installation year at zero added noise**
 
 | Method | MAE, years | Skill vs pilot median |
 | --- | --- | --- |
@@ -602,7 +633,7 @@ The filled share aged 50 or older moved by +0.89 percentage points for MissFores
 | IterativeImputer | 10.57 | -0.018 |
 | CatBoost | 10.63 | -0.023 |
 
-**Why.** The pilot uses a different protocol and provides historical context. The near-floor year result motivates the stricter feeder holdout and the explicit age-share check.
+**Why.** The near-floor year result provides a useful comparison for the stricter feeder holdout and the separate age-share check.
 
 *Saved source — Subteam C overhead study, run 20261107-015341, numeric_scores.csv.*
 
@@ -673,7 +704,7 @@ The test suite passed all 32 tests. This includes source reproducibility, block 
 
 ## 14. Limitations
 
-The transformer results use one generator family with designed masks and errors. Spatial installation order and exact identities can make recovery easier than on live SAPN records, where both imputation and screening still need validation. The overhead transfer is synthetic and uses a different noise convention. Its earlier feeder-aware pilot answers a different question.
+The transformer results use one generator family with designed masks and errors. Spatial installation order and exact identities can make recovery easier than on live SAPN records, where both imputation and screening still need validation. The overhead transfer is synthetic and uses a different noise convention. The Phase 1 age-share result describes clean MCAR on one synthetic population. The feeder-aware Subteam C study uses a separate protocol.
 
 Main settings were tuned at 30% MCAR. The grouped MLP correction is retrospective. The original tuning blocks support it, while a prospective validation remains open. The crossed design has few independent seeds. Coarse calibration can leave specific patterns below target, and screening requires verified clean examples.
 
@@ -689,31 +720,14 @@ Recovery is strongest when measured helper fields survive and the evaluation mat
 
 **Three practical causes of failure.** First, related fields can disappear together, eliminating the inputs needed for formulas and learned relationships. Second, weakly informative or noisy inputs can leave a prediction close to the median or produce a wide interval even when a method beats the baseline. Third, a wrong value that remains visible can propagate into multiple fills on the same row. The structural-error cohort shows why checking recorded values and filling missing values are separate tasks.
 
-**Field verdicts at the rules-first anchor**
+**Main inferences**
 
-| Field | Point leader | Skill | Benchmark candidate | Eligible | Precision | Suggested treatment |
-| --- | --- | --- | --- | --- | --- | --- |
-| x | Gaussian EM | 0.945 | MissForest | 51.7% | 98.6% | Auto-fill confident cases and review the rest |
-| y | Gaussian EM | 0.692 | Masked MLP | 50.1% | 100.0% | Auto-fill confident cases and review the rest |
-| Installation day | Gaussian EM | 0.935 | MissForest | 23.8% | 98.3% | Auto-fill confident cases and review the rest |
-| Model ID | MissForest | 0.950 | Masked MLP | 86.5% | 99.7% | Auto-fill confident cases and review the rest |
-| Altitude | Gaussian EM | 0.764 | Masked MLP | 48.5% | 100.0% | Auto-fill confident cases and review the rest |
-| Humidity | MissForest | 0.581 | MissForest | 1.1% | 96.7% | Review. Very few cases qualify. |
-| Salt | MissForest | 0.349 | — | — | — | Review and leave gaps when supporting inputs are missing |
-| Overgrowth | MissForest | 0.684 | MissForest | 3.8% | 95.0% | Review. Very few cases qualify. |
-| Life | MissForest | 0.679 | MissForest | 20.7% | 96.8% | Use the ±100 unit gate for eligible cases |
-| Placebo | — | — | — | — | — | Leave blank |
-| Gas A | MissForest | 0.842 | MissForest | 79.9% | 97.9% | Auto-fill confident cases and review the rest |
-| Gas B | MissForest | 0.816 | Gaussian EM | 85.5% | 97.8% | Auto-fill confident cases and review the rest |
-| Gas C | MissForest | 0.817 | MissForest | 83.3% | 98.2% | Auto-fill confident cases and review the rest |
-| Total gas | MissForest | 0.775 | — | — | — | Review and leave gaps when supporting inputs are missing |
-| Leakage | Gaussian EM | 0.141 | — | — | — | Review and leave gaps when supporting inputs are missing |
-
-**Why.** This is a retrospective eligibility comparison. Geometry precision is mostly attributable to exact rules. Humidity and overgrowth go to review because few cases qualify. Review unvalidated patterns even for fields with an eligible benchmark candidate.
-
-*Saved source — final/tables/attribute_guidance.csv.*
-
-<div class="page-break"></div>
+1. MissForest led on scattered-gap skill, while Gaussian EM placed more fills within loose tolerance on the matched anchor.
+2. Grouped gaps changed the ranking. The MLP led after its training masks were matched to the grouped design.
+3. Validate eligibility by field and missing pattern. Pooled precision can hide failures such as model-based x.
+4. Validate downstream predictions on filled inputs. In this study, filling test inputs did more damage than filling training inputs.
+5. For population age shares, aggregate year probabilities. In Phase 1, single year fills overstated the older share.
+6. Screen recorded values separately and send flags to review. Verify them against an independent source.
 
 ### Method guidance and a SAPN pilot
 
@@ -730,6 +744,32 @@ Recovery is strongest when measured helper fields survive and the evaluation mat
 **Why.** The safest workflow depends on the field, the missingness pattern and the intended use. Apply separate checks for point accuracy, pattern coverage and false alarms.
 
 *Saved source — final/tables/cells.csv and macro_run_scores.csv; failure-audit/tables/mean_numeric_skill_by_pair.csv and screening_operating_points.csv.*
+
+<div class="page-break"></div>
+
+**Field verdicts at the rules-first anchor**
+
+| Field | Point leader | Skill | Benchmark candidate | Eligible | Precision | Suggested treatment |
+| --- | --- | --- | --- | --- | --- | --- |
+| x | Gaussian EM | 0.945 | Exact rule + MissForest | 51.7% | 98.6% combined | Use the exact rule with valid inputs. Model fills had 74.2% precision. Review pending pattern validation. |
+| y | Gaussian EM | 0.692 | Exact rule | 50.1% | 100.0% | Use the exact rule with valid inputs. Review the rest. |
+| Installation day | Gaussian EM | 0.935 | MissForest | 23.8% | 98.3% | Auto-fill confident cases and review the rest |
+| Model ID | MissForest | 0.950 | Masked MLP | 86.5% | 99.7% | Auto-fill confident cases and review the rest |
+| Altitude | Gaussian EM | 0.764 | Exact rule | 48.5% | 100.0% | Use the exact rule with valid inputs. Review the rest. |
+| Humidity | MissForest | 0.581 | MissForest | 1.1% | 96.7% | Review. Very few cases qualify. |
+| Salt | MissForest | 0.349 | — | — | — | Review and leave gaps when supporting inputs are missing |
+| Overgrowth | MissForest | 0.684 | MissForest | 3.8% | 95.0% | Review. Very few cases qualify. |
+| Life | MissForest | 0.679 | MissForest | 20.7% | 96.8% | Use the ±100 unit gate for eligible cases |
+| Placebo | — | — | — | — | — | Leave blank |
+| Gas A | MissForest | 0.842 | MissForest | 79.9% | 97.9% | Auto-fill confident cases and review the rest |
+| Gas B | MissForest | 0.816 | Gaussian EM | 85.5% | 97.8% | Auto-fill confident cases and review the rest |
+| Gas C | MissForest | 0.817 | MissForest | 83.3% | 98.2% | Auto-fill confident cases and review the rest |
+| Total gas | MissForest | 0.775 | — | — | — | Review and leave gaps when supporting inputs are missing |
+| Leakage | Gaussian EM | 0.141 | — | — | — | Review and leave gaps when supporting inputs are missing |
+
+**Why.** These are retrospective field-level shares. All eligible y and altitude fills came from the exact rule. The combined x figure pools exact-rule and MissForest fills and cannot establish the reliability of model-based x. Humidity and overgrowth go to review because few cases qualify.
+
+*Saved source — final/tables/attribute_guidance.csv; final-review/rule_vs_model_eligibility.csv.*
 
 **Recommendations.** Record which fields are missing together. Benchmark candidate methods on verified records with feeder or location holdouts. Route wide intervals, unsupported patterns and unvalidated tolerances to review. Audit high-impact observed fields separately. Track false alarms, precision and review capacity by field before widening deployment.
 
@@ -759,9 +799,13 @@ Recovery is strongest when measured helper fields survive and the evaluation mat
 ## References
 
 - Subteam C, Team 19. *SyntheticDataset.ipynb*, transformer generator and supplied clean/measured pairs.
-- Team 19, Subteams A and C. Prepared synthetic overhead conductor pairs and saved Subteam C overhead pilot.
+- Team 19, Subteam A. *Overhead-conductor Phase 1 pilot* and *Overhead-conductor age distributions*, October 2026. Saved tables named in Section 12.
+- Team 19, Subteam C. Prepared synthetic overhead conductor pairs and saved overhead study, run 20261107-015341.
 - SA Power Networks. *Asset Management Plan 3.1.10, Overhead Conductor, 2014 to 2025*. [Australian Energy Regulator publication](https://www.aer.gov.au/documents/sapn-2063-public-sapn-asset-management-plan-3110-overhead-conductor-2014-2025).
 - Stekhoven, D. J., and Bühlmann, P. (2012). [MissForest: non-parametric missing value imputation for mixed-type data](https://doi.org/10.1093/bioinformatics/btr597). *Bioinformatics*.
 - Du, T., Melis, L., and Wang, T. (2024). [ReMasker: Imputing tabular data with masked autoencoding](https://proceedings.iclr.cc/paper_files/paper/2024/hash/258d234a229d1612a565f9d9a63e3e80-Abstract-Conference.html). *ICLR*.
 - Zaffran, M., et al. (2023). [Conformal Prediction with Missing Values](https://proceedings.mlr.press/v202/zaffran23a.html). *ICML*.
 - Niculescu-Mizil, A., and Caruana, R. (2005). [Predicting Good Probabilities with Supervised Learning](https://doi.org/10.1145/1102351.1102430). *ICML*.
+- Mitra, R., et al. (2023). [Learning from data with structured missingness](https://doi.org/10.1038/s42256-022-00596-z). *Nature Machine Intelligence*, 5, 13–23.
+- Guo, C., Pleiss, G., Sun, Y., and Weinberger, K. Q. (2017). [On Calibration of Modern Neural Networks](https://proceedings.mlr.press/v70/guo17a.html). *ICML*.
+- van Buuren, S. (2018). [Flexible Imputation of Missing Data](https://stefvanbuuren.name/fimd/sec-simplesolutions.html), 2nd ed., Section 1.3. Chapman & Hall/CRC.
